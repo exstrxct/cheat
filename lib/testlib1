@@ -1,6 +1,48 @@
---oi mate stop looking non of your buisness
+--// Init Root UI
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Root GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "LibraryV2_UI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = playerGui
+
+-- Main Holder Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 600, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+-- Layout for tabs
+local TabHolder = Instance.new("Frame")
+TabHolder.Name = "TabHolder"
+TabHolder.Size = UDim2.new(0, 150, 1, 0)
+TabHolder.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TabHolder.BorderSizePixel = 0
+TabHolder.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Parent = TabHolder
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Content Area (where containers will go)
+local ContentHolder = Instance.new("Frame")
+ContentHolder.Name = "ContentHolder"
+ContentHolder.Size = UDim2.new(1, -150, 1, 0)
+ContentHolder.Position = UDim2.new(0, 150, 0, 0)
+ContentHolder.BackgroundTransparency = 1
+ContentHolder.Parent = MainFrame
+
+-- Save references so the library can use them
 local LibraryV2 = {}
 LibraryV2.__index = LibraryV2
+LibraryV2.Holder = MainFrame
+LibraryV2.TabHolder = TabHolder
+LibraryV2.ContentHolder = ContentHolder
 LibraryV2.Notifications = {}
 
 --[[ // Plan 
@@ -461,69 +503,36 @@ function LibraryV2.UI(Name)
     return setmetatable(Library, LibraryV2)
 end
 
-function LibraryV2:Tab(Name, Icon)
-    local Tab
-    Tab = {
-        Name = Name,
-        Icon = "rbxassetid://"..Icon,
-        Containers = {},
-        Tweens = {},
+function LibraryV2:Tab(Name, TabImageId)
+    -- Tab button
+    local TabButton = Instance.new("TextButton")
+    TabButton.Text = Name
+    TabButton.Size = UDim2.new(1, 0, 0, 40)
+    TabButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TabButton.Parent = self.TabHolder
 
-        Tab = GetAsset("TabTemplate"):Clone(),
+    -- Content frame
+    local TabContent = Instance.new("Frame")
+    TabContent.Name = Name .. "_Content"
+    TabContent.Size = UDim2.new(1, 0, 1, 0)
+    TabContent.BackgroundTransparency = 1
+    TabContent.Visible = false
+    TabContent.Parent = self.ContentHolder
 
-        CancelTweens = function()
-            for i, tween in pairs(Tab.Tweens) do
-                tween:Cancel()
-                table.remove(Tab.Tweens, i)
+    -- Switch tabs
+    TabButton.MouseButton1Click:Connect(function()
+        -- Hide all content frames
+        for _, frame in ipairs(self.ContentHolder:GetChildren()) do
+            if frame:IsA("Frame") then
+                frame.Visible = false
             end
-        end,
-
-        Update = function(...)
-            Tab.Tab.Icon.Image = Tab.Icon
-            Tab.Tab.Effect.TL.Label.Text = Tab.Name
-            
-            local _m = #self.Tabs-1
-            self._UI.TabContainer.Size = u2(0, 71, 0, (80)+(55*_m + (5*(_m+1))))
-        end,
-
-        _UI = self._UI
-    }
-	table.insert(self.Tabs, Tab)
-    
-    Tab.Tab.Parent = self._UI.TabContainer.Holder
-    Tab.Update()
-
-    Tab.Tab.MouseEnter:Connect(function()
-        Tab.CancelTweens() --To prevent bugging out
-
-        local TextTween = Tab.Tab.Effect.TL
-        local Tween_ = game:GetService("TweenService"):Create(TextTween, TweenInfo.new(0.2), {Position = u2(0.5, 0, 0.5, 0)})
-        Tween_:Play()
-
-        table.insert(Tab.Tweens, Tween_)
+        end
+        -- Show selected one
+        TabContent.Visible = true
     end)
 
-    Tab.Tab.MouseLeave:Connect(function()
-        Tab.CancelTweens() --To prevent bugging out
-
-        local TextTween = Tab.Tab.Effect.TL
-        local Tween_ = game:GetService("TweenService"):Create(TextTween, TweenInfo.new(0.2), {Position = u2(1.5, 0, 0.5, 0)})
-        Tween_:Play()
-
-        table.insert(Tab.Tweens, Tween_)
-    end)
-
-    Tab.Tab.MouseButton1Down:Connect(function()
-        Tween(self._UI.Lib, {Position = u2(0.75, 0, self._UI.Lib.Position.Y.Scale, 0)}, 0.5)
-        self.Hide_All()
-        self.Show(Tab.Containers)
-    end)
-    
-    self._UI.Lib.Holder.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        self._UI.Lib.Holder.CanvasSize = UDim2.new(0,0,0,self._UI.Lib.Holder.UIListLayout.AbsoluteContentSize.Y)
-    end)
-
-    return setmetatable(Tab, LibraryV2)
+    return TabContent
 end
 
 function LibraryV2:Container(Name)
